@@ -495,7 +495,19 @@ class Molecule {
 
 Pero no se dejaba ejecuta por este error   
 
-<img width="925" height="927" alt="image" src="https://github.com/user-attachments/assets/72b01c62-6d8c-48ce-84c6-77ef1404ec0e" />
+<img width="925" height="927" alt="image" src="https://github.com/user-attachments/assets/72b01c62-6d8c-48ce-84c6-77ef1404ec0e" />  
+
+Luegos se descubrio el error 
+
+Líneas sueltas al inicio (antes de setup()) que usan this fuera de cualquier función o clase — eso es inválido en JavaScript:
+js
+this.groupTarget = null;
+this.changeTimer = int(random(60,180));
+this.energy = 0;
+
+Esto parece un resto de código que se quedó pegado fuera de la clase Molecule (ya está manejado correctamente dentro del constructor()).
+
+Falta una llave de cierre } al final del archivo — la que cierra la clase Molecule. Por eso el error es "Unexpected end of input": el intérprete llega al final del archivo esperando todavía cerrar la clase.
 
 
 
