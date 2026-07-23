@@ -2,7 +2,7 @@
 
 ## Actividad 7   
 
-## Intención conceptual
+## Intención conceptual #1
 
 El objetivo de este proyecto fue desarrollar una simulación inspirada en el comportamiento de un laboratorio molecular, donde un conjunto de partículas cambia su comportamiento según las condiciones del sistema. La intención fue representar visualmente cómo la combinación de reglas simples puede generar comportamientos complejos.
 
@@ -777,11 +777,8 @@ class Molecule {
 
 #### Resultados  
 <img width="1996" height="1083" alt="image" src="https://github.com/user-attachments/assets/c595bbe2-dad0-4c6f-b947-abea34d2b19b" />  
-<img width="2003" height="1145" alt="image" src="https://github.com/user-attachments/assets/3ced8439-8eb7-498d-9f4a-fab219cf3bdd" />
+<img width="2003" height="1145" alt="image" src="https://github.com/user-attachments/assets/3ced8439-8eb7-498d-9f4a-fab219cf3bdd" />  
 
+Observando el resultado, me parecio algo aburrido para una feria de ciencias e innovación, asi que decidi pensar en otra idea más acorde. Porque solo mostrar moleculas moviendose y uniendose aleatoriamente, no me parecio tan conceptual, si no más experimental ya que la forma de demostrarlo en la interaccion con la temperatura no era lo mas ideal, ni divertido.  
 
-
-
-
-
-
+## Interaccion conceptual #2
