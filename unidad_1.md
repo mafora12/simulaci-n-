@@ -1976,7 +1976,7 @@ Recorde que tenia que organizar el .html pq este no era completo a lo que yo nec
 
 ## Trabajo Final link  
 
-<iframe src="https://editor.p5js.org/mafora12/full/nHWkOUVUg"></iframe>  
+https://editor.p5js.org/mafora12/full/nHWkOUVUg
 
 
 
