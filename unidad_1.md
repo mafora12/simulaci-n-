@@ -1555,7 +1555,321 @@ Al integrar el sketch dentro del mockup del submarino aparecieron los siguientes
 
 ![Error de integración](https://github.com/user-attachments/assets/8f35f7d0-3373-472d-958e-bd056d76864e)
 
-Recordé que tenía que organizar bien el `.html` de la interfaz, ya que no coincidía por completo con lo que necesitaba el sketch (los IDs y la estructura de los contenedores no estaban alineados con lo que esperaba `sketch.js`). Al revisar y ajustar esa correspondencia entre `index.html`, `style.css` y `sketch.js`, se solucionó.
+Recordé que tenía que organizar bien el `.html` de la interfaz, ya que no coincidía por completo con lo que necesitaba el sketch (los IDs y la estructura de los contenedores no estaban alineados con lo que esperaba `sketch.js`). Al revisar y ajustar esa correspondencia entre `index.html`, `style.css` y `sketch.js`, se solucionó.  
+<details>
+<summary><strong>Código final</strong></summary>
+
+```javascript
+let particles = [];
+const N = 240;
+ 
+const NOISE_SCALE = 0.0032;
+const FIELD_TURNS = 2.2;
+let zoff = 0;
+ 
+const HIGH_SIGMA = 2.6;
+const LOW_SIGMA  = 0.10;
+ 
+const LEVY_PROB  = 0.0011;
+const LEVY_ALPHA = 1.25;
+const LEVY_SCALE = 7;
+ 
+let echoes = [];
+let eventCount = 0;
+ 
+let pointerActive = false;
+let lastMoveTime = -9999;
+let POINTER_RADIUS = 260;
+let pings = [];
+let lastPing = 0;
+ 
+let seed;
+let sweepAngle = 0;
+let screenEl;
+ 
+function setup() {
+  screenEl = document.getElementById('screen');
+  const cnv = createCanvasFit();
+  cnv.parent('screen');
+  pixelDensity(1);
+  seed = floor(random(1000000));
+  noiseSeed(seed);
+  randomSeed(seed);
+  colorMode(HSB, 360, 100, 100, 100);
+  textFont('Courier New');
+  background(0, 0, 1);
+ 
+  for (let i = 0; i < N; i++) particles.push(makeParticle());
+}
+ 
+function makeParticle() {
+  return { x: random(width), y: random(height), speed: random(0.6, 1.4) };
+}
+ 
+function windowResized() {
+  createCanvasFit();
+  background(0, 0, 1);
+}
+ 
+function createCanvasFit() {
+  const w = screenEl.clientWidth;
+  const h = screenEl.clientHeight;
+  POINTER_RADIUS = min(w, h) * 0.45;
+  return resizeOrCreate(w, h);
+}
+ 
+let _created = false;
+function resizeOrCreate(w, h) {
+  if (!_created) {
+    _created = true;
+    return createCanvas(floor(w), floor(h));
+  } else {
+    resizeCanvas(floor(w), floor(h));
+    return null;
+  }
+}
+ 
+function coherenceNow() {
+  const slow = 0.5 + 0.42 * sin(frameCount * 0.0021);
+  const drift = (noise(4000, frameCount * 0.0007) - 0.5) * 0.28;
+  return constrain(slow + drift, 0.04, 0.97);
+}
+ 
+function updatePointerState() {
+  const moving = (abs(mouseX - pmouseX) > 0.5 || abs(mouseY - pmouseY) > 0.5);
+  if (moving) lastMoveTime = millis();
+  const inside = mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height;
+  pointerActive = inside && (millis() - lastMoveTime < 900);
+}
+ 
+function lerpAngle(a, b, t) {
+  let diff = ((b - a + PI) % TWO_PI + TWO_PI) % TWO_PI - PI;
+  return a + diff * t;
+}
+ 
+function fieldAngleAt(x, y) {
+  let n = noise(x * NOISE_SCALE, y * NOISE_SCALE, zoff);
+  let ang = n * TWO_PI * FIELD_TURNS;
+ 
+  for (let e of echoes) {
+    const dx = e.x - x, dy = e.y - y;
+    const d = sqrt(dx * dx + dy * dy) + 0.001;
+    if (d < e.reach) {
+      const pull = (1 - d / e.reach) * e.strength;
+      ang = lerpAngle(ang, atan2(dy, dx), pull * 0.5);
+    }
+  }
+ 
+  if (pointerActive) {
+    const dx = x - mouseX, dy = y - mouseY;
+    const d = sqrt(dx * dx + dy * dy);
+    if (d < POINTER_RADIUS) {
+      const w = pow(1 - d / POINTER_RADIUS, 0.6);
+      const swirl = atan2(dy, dx) + HALF_PI;
+      ang = lerpAngle(ang, swirl, w * 0.95);
+    }
+  }
+  return ang;
+}
+ 
+function localSigma(x, y, baseSigma) {
+  if (!pointerActive) return baseSigma;
+  const d = dist(x, y, mouseX, mouseY);
+  if (d > POINTER_RADIUS) return baseSigma;
+  const w = pow(1 - d / POINTER_RADIUS, 0.6);
+  return lerp(baseSigma, HIGH_SIGMA * 1.3, w);
+}
+ 
+function pointerSpeedBoost(x, y) {
+  if (!pointerActive) return 1;
+  const d = dist(x, y, mouseX, mouseY);
+  if (d > POINTER_RADIUS) return 1;
+  const w = pow(1 - d / POINTER_RADIUS, 0.6);
+  return lerp(1, 2.2, w);
+}
+ 
+function drawRadarGrid() {
+  push();
+  translate(width / 2, height / 2);
+  noFill();
+  stroke(130, 45, 30, 22);
+  strokeWeight(1);
+  const maxR = dist(0, 0, width / 2, height / 2);
+  for (let r = maxR / 5; r <= maxR; r += maxR / 5) circle(0, 0, r * 2);
+  for (let a = 0; a < TWO_PI; a += PI / 6) line(0, 0, cos(a) * maxR, sin(a) * maxR);
+  pop();
+ 
+  stroke(130, 40, 22, 10);
+  strokeWeight(1);
+  for (let x = 0; x < width; x += 34) line(x, 0, x, height);
+  for (let y = 0; y < height; y += 34) line(0, y, width, y);
+}
+ 
+function drawSweep() {
+  push();
+  translate(width / 2, height / 2);
+  const maxR = dist(0, 0, width / 2, height / 2);
+  noStroke();
+  for (let i = 0; i < 18; i++) {
+    const a = sweepAngle - i * 0.02;
+    fill(130, 60, 55, 3.2 * (1 - i / 18));
+    beginShape();
+    vertex(0, 0);
+    vertex(cos(a) * maxR, sin(a) * maxR);
+    vertex(cos(a - 0.02) * maxR, sin(a - 0.02) * maxR);
+    endShape(CLOSE);
+  }
+  stroke(130, 25, 95, 45);
+  strokeWeight(1.4);
+  line(0, 0, cos(sweepAngle) * maxR, sin(sweepAngle) * maxR);
+  pop();
+}
+ 
+function drawScanlines() {
+  noStroke();
+  fill(0, 0, 0, 7);
+  for (let y = 0; y < height; y += 3) rect(0, y, width, 1);
+  noFill();
+  for (let i = 0; i < 24; i++) {
+    stroke(0, 0, 0, 3);
+    strokeWeight(i);
+    rect(i / 2, i / 2, width - i, height - i);
+  }
+}
+ 
+function drawHUD(coherence) {
+  push();
+  noStroke();
+  fill(130, 20, 95, 85);
+  textSize(11);
+  textLeading(15);
+  const estado = coherence > 0.62 ? 'NORMALIDAD' : (coherence > 0.32 ? 'TENDENCIA' : 'POSIBILIDAD');
+  const txt =
+`SISTEMA · NAVEGAR LA INCERTIDUMBRE
+SEED       ${seed}
+ESTADO     ${estado}
+COHERENCIA ${nf(coherence, 1, 2)}
+EXCEPC.    ${eventCount}
+SENSOR     ${pointerActive ? 'ACTIVO' : 'EN ESPERA'}`;
+  text(txt, 14, 20);
+  pop();
+}
+ 
+function draw() {
+  updatePointerState();
+  const coherence = coherenceNow();
+  const sigmaAngle = lerp(HIGH_SIGMA, LOW_SIGMA, coherence);
+ 
+  blendMode(BLEND);
+  noStroke();
+  fill(0, 0, 1, 14);
+  rect(0, 0, width, height);
+ 
+  drawRadarGrid();
+ 
+  blendMode(ADD);
+  drawSweep();
+ 
+  for (let p of particles) {
+    const base = fieldAngleAt(p.x, p.y);
+    const sigma = localSigma(p.x, p.y, sigmaAngle);
+    let angle = base + randomGaussian() * sigma;
+    const boost = pointerSpeedBoost(p.x, p.y);
+ 
+    let stepLen;
+    const isException = random() < LEVY_PROB;
+ 
+    if (isException) {
+      const u = random(0.015, 1);
+      stepLen = min(pow(u, -1 / LEVY_ALPHA) * LEVY_SCALE, max(width, height) * 0.35);
+      angle = random(TWO_PI);
+    } else {
+      stepLen = p.speed * abs(randomGaussian(1, 0.22)) * boost;
+    }
+ 
+    p.x += cos(angle) * stepLen;
+    p.y += sin(angle) * stepLen;
+ 
+    if (p.x < 0) p.x += width;
+    if (p.x > width) p.x -= width;
+    if (p.y < 0) p.y += height;
+    if (p.y > height) p.y -= height;
+ 
+    if (isException) {
+      echoes.push({ x: p.x, y: p.y, life: 260, maxLife: 260, reach: 160, strength: 0.9 });
+      eventCount++;
+    }
+ 
+    const near = pointerActive ? constrain(1 - dist(p.x, p.y, mouseX, mouseY) / POINTER_RADIUS, 0, 1) : 0;
+    const bri = lerp(lerp(50, 92, coherence * 0.4 + 0.3), 100, near);
+    const sat = lerp(60, 12, near);
+    const size = lerp(isException ? 4.5 : 2.2, isException ? 7 : 5, near);
+    fill(130, sat, bri, near > 0.05 ? 85 : 60);
+    circle(p.x, p.y, size);
+  }
+ 
+  if (pointerActive && millis() - lastPing > 260) {
+    pings.push({ x: mouseX, y: mouseY, life: 55, maxLife: 55 });
+    lastPing = millis();
+  }
+  for (let i = pings.length - 1; i >= 0; i--) {
+    const pg = pings[i];
+    const t = pg.life / pg.maxLife;
+    noFill();
+    stroke(130, 20, 100, 60 * t);
+    strokeWeight(1.6);
+    circle(pg.x, pg.y, (1 - t) * POINTER_RADIUS * 1.4);
+    pg.life -= 1;
+    if (pg.life <= 0) pings.splice(i, 1);
+  }
+ 
+  for (let i = echoes.length - 1; i >= 0; i--) {
+    const e = echoes[i];
+    const t = e.life / e.maxLife;
+    noFill();
+    stroke(130, 30, 95, 30 * t);
+    strokeWeight(1);
+    circle(e.x, e.y, e.reach * 0.55 * (1.4 - t));
+    e.life -= 1;
+    e.strength = 0.9 * (e.life / e.maxLife);
+    if (e.life <= 0) echoes.splice(i, 1);
+  }
+ 
+  if (pointerActive) {
+    blendMode(ADD);
+    noStroke();
+    fill(130, 15, 100, 30);
+    circle(mouseX, mouseY, 46);
+    blendMode(BLEND);
+    noFill();
+    stroke(130, 15, 100, 85);
+    strokeWeight(1.4);
+    circle(mouseX, mouseY, 26);
+    line(mouseX - 20, mouseY, mouseX - 8, mouseY);
+    line(mouseX + 8, mouseY, mouseX + 20, mouseY);
+    line(mouseX, mouseY - 20, mouseX, mouseY - 8);
+    line(mouseX, mouseY + 8, mouseX, mouseY + 20);
+    drawingContext.setLineDash([3, 4]);
+    stroke(130, 25, 95, 35);
+    circle(mouseX, mouseY, POINTER_RADIUS * 1.5);
+    drawingContext.setLineDash([]);
+  }
+ 
+  blendMode(BLEND);
+  drawScanlines();
+  drawHUD(coherence);
+ 
+  sweepAngle += 0.012;
+  zoff += 0.0016;
+}
+ 
+function touchMoved() {
+  lastMoveTime = millis();
+  return false;
+}
+ 
+```
+</details>
 
 ---
 
@@ -1565,10 +1879,10 @@ Recordé que tenía que organizar bien el `.html` de la interfaz, ya que no coin
 
 
 ## Autoevalución  
-| **Criterio**                  | **Evidencia (con enlace)**                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Encargo completo**          | [Proceso – Paso 1: sistema base](#proceso--paso-1-sistema-base), donde se explica la interpretación de los cinco momentos. También en [¿Por qué cumple las condiciones?](#por-qué-cumple-las-condiciones), donde se justifica que todos los momentos ocurren dentro de un mismo sistema visual.                                                                                                                                                                      |
-| **Simulación con intención**  | [Intención conceptual #1 — Laboratorio molecular](#intención-conceptual-1--laboratorio-molecular), donde se presentan los conceptos utilizados, y [¿Por qué cumple las condiciones?](#por-qué-cumple-las-condiciones), donde se explica que el sistema integra cuatro conceptos de la unidad.                                                                                                                                                                        |
-| **Interacción significativa** | [Intención conceptual #1 — Laboratorio molecular](#intención-conceptual-1--laboratorio-molecular), donde se describe la interacción inicial; [Proceso – Paso 1: sistema base](#proceso--paso-1-sistema-base), donde se explica cómo la interacción modifica el sistema; y [Arreglo 1 — Interacción más notoria](#arreglo-1--interacción-más-notoria), donde se documentan las mejoras realizadas.                                                                    |
-| **Prototipo funcional**       | [Control de versiones](#control-de-versiones), donde se documenta el error encontrado, el diagnóstico y la solución; además del [Código — corregido y funcional](#código--corregido-y-funcional), que evidencia el funcionamiento del prototipo.                                                                                                                                                                                                                     |
-| **Proceso documentado**       | [Experimentos y versiones intermedias](#experimentos-y-versiones-intermedias), [Intención conceptual #2 — Estación de sonar / localizador](#intención-conceptual-2--estación-de-sonar--localizador), [Proceso – Paso 2: piel de instrumento científico](#proceso--paso-2-piel-de-instrumento-científico), [Arreglo 1 — Interacción más notoria](#arreglo-1--interacción-más-notoria) y [Arreglo 2 — Mockup visual (submarino)](#arreglo-2--mockup-visual-submarino). |
+| **Criterio**                                                                                                                                      | **Cumplió** | **Evidencia**                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | :---------: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Encargo completo:** interpreto los cinco momentos dentro de un mismo sistema visual.                                                            |     ✅ Sí    | [Proceso – Paso 1: sistema base](#proceso--paso-1-sistema-base), donde se explica la interpretación de los cinco momentos. También en [¿Por qué cumple las condiciones?](#por-qué-cumple-las-condiciones), donde se justifica que todos los momentos ocurren dentro de un mismo sistema visual.                                                                                                                                                                      |
+| **Simulación con intención:** utilizo al menos tres conceptos de la unidad para comunicar las ideas del encargo.                                  |     ✅ Sí    | [Intención conceptual #1 — Laboratorio molecular](#intención-conceptual-1--laboratorio-molecular), donde se presentan los conceptos utilizados, y [¿Por qué cumple las condiciones?](#por-qué-cumple-las-condiciones), donde se explica que el sistema integra cuatro conceptos de la unidad.                                                                                                                                                                        |
+| **Interacción significativa:** la interacción modifica el comportamiento o las probabilidades del sistema, que también funciona sin intervención. |     ✅ Sí    | [Intención conceptual #1 — Laboratorio molecular](#intención-conceptual-1--laboratorio-molecular), donde se describe la interacción inicial; [Proceso – Paso 1: sistema base](#proceso--paso-1-sistema-base), donde se explica cómo la interacción modifica el sistema; y [Arreglo 1 — Interacción más notoria](#arreglo-1--interacción-más-notoria), donde se documentan las mejoras realizadas.                                                                    |
+| **Prototipo funcional:** la experiencia puede ejecutarse y recorrerse completa sin errores que impidan comprenderla.                              |     ✅ Sí    | [Control de versiones](#control-de-versiones), donde se documenta el error encontrado, el diagnóstico y la solución; además del [Código — corregido y funcional](#código--corregido-y-funcional), que evidencia el funcionamiento del prototipo.                                                                                                                                                                                                                     |
+| **Proceso documentado:** la bitácora evidencia avances, decisiones, dificultades, soluciones, uso de IA y enlace al prototipo.                    |     ✅ Sí    | [Experimentos y versiones intermedias](#experimentos-y-versiones-intermedias), [Intención conceptual #2 — Estación de sonar / localizador](#intención-conceptual-2--estación-de-sonar--localizador), [Proceso – Paso 2: piel de instrumento científico](#proceso--paso-2-piel-de-instrumento-científico), [Arreglo 1 — Interacción más notoria](#arreglo-1--interacción-más-notoria) y [Arreglo 2 — Mockup visual (submarino)](#arreglo-2--mockup-visual-submarino). |
