@@ -136,8 +136,8 @@ El problema no fue técnico, fue conceptual: al verlo terminado me di cuenta de 
 **Código:**
 ```js
 const sketch = (p) => {
-  const TYPE_A = 0; // Buscador
-  const TYPE_B = 1; // Evasivo
+  const TYPE_A = 0;
+  const TYPE_B = 1; 
 
   let particles = [];
 
@@ -148,8 +148,8 @@ const sketch = (p) => {
       [0.30, 0.90],
       [0.15, -0.25]
     ],
-    rClose: [6, 22],   // radio de "pánico" / repulsión dura, por tipo emisor
-    rMax:   [150, 90], // alcance de percepción, por tipo emisor
+    rClose: [6, 22],  
+    rMax:   [150, 90], 
     friction: 0.08,
     forceScale: 420,
     maxSpeed: 3.5
@@ -264,7 +264,7 @@ const sketch = (p) => {
     }
   };
 
-  // ---- UI wiring ----
+
   function bindRange(id, decimals, onChange) {
     const el = document.getElementById(id);
     const out = document.getElementById(id + '-out');
@@ -317,8 +317,8 @@ No descarté el concepto — la idea de atraer partículas a puntos fijos seguí
 **Código:**
 ```js
 const sketch = (p) => {
-  const SANS = 0;  // orden
-  const SERIF = 1; // ruido
+  const SANS = 0; 
+  const SERIF = 1; 
 
   let particles = [];
 
@@ -517,13 +517,13 @@ El problema apareció cuando se lo mostré a alguien y le pregunté qué veía: 
 **Código:**
 ```js
 const sketch = (p) => {
-  const SANS = 0;  // orden
-  const SERIF = 1; // ruido
+  const SANS = 0;  
+  const SERIF = 1; 
   const LETTER_N = 160;
 
   let particles = [];
-  let letterNorm = [];   // puntos normalizados (0..1) sobre la letra A
-  let letterPx = [];     // puntos mapeados a pixeles, recalculado cada frame
+  let letterNorm = [];   
+  let letterPx = [];     
 
   let params = {
     countS: 130,
@@ -996,9 +996,6 @@ function draw() {
     a.vy += fy * params.forceScale * 0.0001;
 
     if (a.type === SERIF && params.noiseStrength > 0) {
-      // Perlin noise en vez de random(): cada partícula serif recorre
-      // su propia curva suave, como un trazo caligráfico, en lugar
-      // de temblar al azar frame a frame (mucho más cercano a Max Cooper).
       const nx = (noise(a.nOffsetX + noiseT) - 0.5) * 2;
       const ny = (noise(a.nOffsetY + noiseT) - 0.5) * 2;
       a.vx += nx * params.noiseStrength;
