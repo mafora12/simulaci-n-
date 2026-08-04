@@ -1110,13 +1110,11 @@ El ruido devora cualquier alineación; no queda identidad reconocible de "págin
 **Manifestación D — semilla distinta, mismos parámetros que A**
 Misma configuración de la manifestación A, pero con una nueva semilla aleatoria. Confirma que la *identidad* del sistema (columnas + invasión) se mantiene aunque la composición exacta cambie — esto es lo que se pide como "variabilidad entre ejecuciones" con "identidad reconocible".
 
-[*(Versión final)*](https://editor.p5js.org/mafora12/full/djf8Vghor)
+[*(Versión final)*]([https://editor.p5js.org/mafora12/full/djf8Vghor](https://editor.p5js.org/mafora12/full/djf8Vghor))
 
 ---
 
 ## 7. Autoevaluación sustentada
-
-> Nota: valorar todo en 100% es una posición fuerte — en la presentación te van a pedir que la sostengas punto por punto. Los sustentos de abajo están escritos para eso; tenlos a la mano y respáldalos con las manifestaciones y el registro de pruebas cuando te pregunten.
 
 | Criterio | Peso | Valoración | Aporte |
 |---|---:|---:|---:|
