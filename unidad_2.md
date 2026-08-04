@@ -1,5 +1,5 @@
 # Actividad 05 — Reto de diseño: una contradicción en movimiento
-### Unidad 2 · Simulación · UPB
+### Unidad 2 · Simulación 
 
 ---
 
@@ -110,33 +110,33 @@ Todas las partículas nacen en posiciones aleatorias dentro del área de la ret�
 ---
 
 ## 5. Registro de pruebas
- 
+
+Esta sección cuenta, en orden, el camino real que seguí hasta llegar a la versión final — qué probé, qué pasó, qué pensé y por qué decidí lo que decidí. La tabla de abajo es solo el resumen rápido; el relato completo, con código y capturas, está en 5.1.
+
 ### 5.0 Resumen
- 
+
 | # | Ajuste probado | Hallazgo | Decisión |
 |---|---|---|---|
 | 1 | Tensión inicial: "cercanía vs. miedo a la intimidad" (dos poblaciones con radios de pánico distintos) | Funcionaba, pero no conectaba con tipografía/diseño gráfico, que es mi área | **Descartado** — se buscó una tensión más cercana a diseño gráfico |
 | 2 | Tensión "orden vs. ruido" mapeada a sans-serif vs. serif, con fuerza de grilla uniforme (puntos de una cuadrícula regular) | Se leía como papel cuadriculado genérico, no como sistema tipográfico | Se mantuvo el concepto, se refinó la regla de alineación |
 | 3 | Sans atraídas a puntos fijos sobre el trazo de una letra "A" | Formaba la letra, pero el espectador leía "es una A", no "es un sistema de relaciones" — contradice el espíritu de diseño generativo de la unidad | **Descartado** — reemplazado por retícula editorial (columnas + líneas base) |
-| 4 | Refinamiento del sistema de retícula editorial: guía visual permanente → oculta + tecla G · `random()` → Perlin noise · confinamiento de ambas poblaciones → solo sans · Orden→Ruido positivo → negativo · fuerza de retícula muy alta → rango 0.03–0.06 | Ver detalle de los cinco ajustes en 5.1, Prueba 4 | Varias decisiones, ver detalle |
+| 4 | Refinamiento del sistema de retícula editorial: guía visual permanente → oculta + tecla G · `random()` → Perlin noise · confinamiento de ambas poblaciones → solo sans · Orden→Ruido positivo → negativo · fuerza de retícula muy alta → rango 0.03–0.06 | Ver el relato completo de los cinco ajustes en 5.1, Prueba 4 | Varias decisiones, ver detalle |
 
 ### 5.1 Evidencia por prueba
-
-Cada bloque de abajo corresponde a la fila de la misma numeración en la tabla de resumen. Pega el fragmento de código y la imagen/captura de cada prueba en su bloque.
 
 ---
 
 #### Prueba 1 — Cercanía vs. miedo a la intimidad
 
-**Ajuste probado:** dos poblaciones con radios de pánico y alcances distintos, simulando necesidad de cercanía vs. evasión.
-**Hallazgo:** funcionaba, pero no conectaba con tipografía/diseño gráfico.
-**Decisión:** **Descartado** — se buscó una tensión más cercana a diseño gráfico.
+Al principio ni siquiera pensé en tipografía. Mi primera idea fue puramente emocional: quería explorar la tensión entre necesitar cercanía y tenerle miedo a la intimidad, así que armé dos poblaciones — un "Buscador" y un "Evasivo" — con radios de pánico y alcances distintos. Le di al Buscador un radio de pánico muy chiquito (6px, casi tolera el contacto directo) y un alcance grande (150px, "ve" de lejos), mientras que al Evasivo le puse un radio de pánico bastante más grande (22px, empieza a huir mucho antes de que lo toquen) y un alcance más corto (90px, tiene menos "radar"). Cuando lo corrí, funcionó exactamente como esperaba: se armaba un ciclo de persecución y huida que nunca se resolvía, uno siempre llegaba justo cuando el otro ya se estaba yendo.
+
+El problema no fue técnico, fue conceptual: al verlo terminado me di cuenta de que esta tensión no tenía ningún vínculo con mi área, que es diseño gráfico. Era una metáfora emocional válida, pero no me daba ningún lenguaje visual propio para seguir desarrollando — no hablaba de tipografía, ni de composición, ni de nada que pudiera defender desde mi disciplina. Decidí descartarla completa y buscar una tensión que sí conectara con diseño gráfico.
 
 **Código:**
 ```js
 const sketch = (p) => {
-  const TYPE_A = 0; // Buscador
-  const TYPE_B = 1; // Evasivo
+  const TYPE_A = 0; 
+  const TYPE_B = 1; 
 
   let particles = [];
 
@@ -263,7 +263,7 @@ const sketch = (p) => {
     }
   };
 
-  // ---- UI wiring ----
+
   function bindRange(id, decimals, onChange) {
     const el = document.getElementById(id);
     const out = document.getElementById(id + '-out');
@@ -301,22 +301,22 @@ new p5(sketch);
 ```
 
 **Captura:**
-![Prueba 1 — cercanía vs. miedo a la intimidad](<img width="2235" height="1123" alt="image" src="https://github.com/user-attachments/assets/04d3ead8-511c-4e5e-87ad-437e35c48c3c" />
-)
+
+<img width="2235" height="1123" alt="image" src="https://github.com/user-attachments/assets/04d3ead8-511c-4e5e-87ad-437e35c48c3c" />
 
 ---
 
 #### Prueba 2 — Orden vs. ruido con grilla uniforme
 
-**Ajuste probado:** sans atraídas a los puntos de una cuadrícula regular (grid uniforme, sin distinguir columnas de líneas base).
-**Hallazgo:** se leía como papel cuadriculado genérico, no como sistema tipográfico.
-**Decisión:** se mantuvo el concepto; se refinó la regla de alineación.
+Con la idea de orden vs. ruido ya mapeada a sans-serif vs. serif, mi primer intento fue el más simple que se me ocurrió: hacer que las partículas sans se atrajeran hacia el punto más cercano de una cuadrícula regular, dibujando líneas cada 42px tanto en horizontal como en vertical (`drawGrid`). Cuando lo corrí, el resultado no me convenció: se veía como una hoja de cuaderno cuadriculado, no como un sistema tipográfico. El problema es que una cuadrícula uniforme no distingue entre "columna editorial" y "línea de base", que es justo lo que hace que una retícula de diseño se sienta como una página y no como papel milimetrado.
+
+No descarté el concepto — la idea de atraer partículas a puntos fijos seguía siendo correcta — pero anoté que tenía que separar la lógica: tratar la alineación horizontal (columnas, más anchas, menos cantidad) distinto de la vertical (líneas base, más angostas, mucho ritmo). Esa separación es la que terminé implementando en la versión final.
 
 **Código:**
 ```js
 const sketch = (p) => {
-  const SANS = 0;  // orden
-  const SERIF = 1; // ruido
+  const SANS = 0;  
+  const SERIF = 1; 
 
   let particles = [];
 
@@ -500,16 +500,16 @@ new p5(sketch);
 ```
 
 **Captura:**
-![Prueba 2 — grilla uniforme](<img width="1757" height="1150" alt="image" src="https://github.com/user-attachments/assets/3b78f447-cffa-480f-937e-6235209d720b" />
-)
+
+<img width="1757" height="1150" alt="image" src="https://github.com/user-attachments/assets/3b78f447-cffa-480f-937e-6235209d720b" />
 
 ---
 
 #### Prueba 3 — Formación de la letra "A"
 
-**Ajuste probado:** sans atraídas a puntos fijos sobre el trazo de una letra "A".
-**Hallazgo:** formaba la letra, pero el espectador leía "es una A", no "es un sistema de relaciones" — contradice el espíritu de diseño generativo de la unidad.
-**Decisión:** **Descartado** — reemplazado por retícula editorial (columnas + líneas base).
+Para resolver el problema de la prueba anterior, probé algo mucho más literal: en vez de una cuadrícula, le di a cada partícula sans un punto fijo asignado sobre el trazo de la letra "A" (calculé esos puntos con una función `buildLetterNorm`, repartiéndolos a lo largo de las dos piernas y el travesaño de la letra). Técnicamente salió perfecto — la letra se armaba con las partículas y las serif la invadían y desordenaban justo como quería.
+
+El problema apareció cuando se lo mostré a alguien y le pregunté qué veía: dijo "una A", sin dudarlo. No dijo "un sistema de relaciones", ni "columnas", ni nada relacionado con tensión o comportamiento — vio una letra dibujada. Y eso es exactamente lo contrario de lo que pide el diseño generativo, que es diseñar el sistema de reglas, no el resultado final. Si el espectador reconoce la forma final en vez del proceso que la genera, el ejercicio pierde su sentido. Descarté la letra por completo y volví a la idea de retícula, pero esta vez aplicando la separación columnas/líneas base que había anotado en la prueba 2.
 
 **Código:**
 ```js
@@ -519,8 +519,8 @@ const sketch = (p) => {
   const LETTER_N = 160;
 
   let particles = [];
-  let letterNorm = [];   // puntos normalizados (0..1) sobre la letra A
-  let letterPx = [];     // puntos mapeados a pixeles, recalculado cada frame
+  let letterNorm = [];   
+  let letterPx = [];     
 
   let params = {
     countS: 130,
@@ -747,22 +747,25 @@ new p5(sketch);
 ```
 
 **Captura:**
-![Prueba 3 — formación de la letra A](<img width="1876" height="1153" alt="image" src="https://github.com/user-attachments/assets/af9f4a2f-3fa0-4c95-9801-700fbd942afb" />
-)
+
+<img width="1876" height="1153" alt="image" src="https://github.com/user-attachments/assets/af9f4a2f-3fa0-4c95-9801-700fbd942afb" />
 
 ---
+
 #### Prueba 4 — Refinamiento del sistema de retícula editorial
- 
-Todos los ajustes de esta prueba se hicieron sobre la misma versión final del sistema (retícula editorial + Perlin noise), por eso van agrupados en una sola evidencia.
- 
-| Ajuste probado | Hallazgo | Decisión |
-|---|---|---|
-| Retícula con guía visual permanente (líneas de fondo siempre visibles) | Delataba demasiado el "andamio"; se perdía la sensación de comportamiento emergente | Se ocultó la guía por defecto; se agregó la tecla **G** para mostrarla solo cuando se necesita explicar el sistema |
-| Ruido de las serif con `random()` puro cada frame | Se veía como temblor nervioso, mecánico — no como gesto caligráfico | **Descartado** — reemplazado por Perlin noise con semilla propia por partícula |
-| Ambas poblaciones (sans y serif) confinadas al área de la retícula | El ruido se sentía "domesticado", contradecía la idea de que el ruido no respeta límites | Se dejó a las sans confinadas y se liberó a las serif para que recorran toda la pantalla |
-| Orden→Ruido positivo (el orden también atrae al ruido) | El sistema colapsaba en una sola mancha mixta; se perdía la lectura de "invasión" | **Descartado** — se cambió a negativo (el orden repele al ruido que lo invade) |
-| Fuerza de retícula muy alta (>0.1) | La retícula quedaba perfecta y estática, sin tensión — mal ejemplo de "diseñado" sin "emergente" | Se fijó un rango recomendado (0.03–0.06) donde la retícula se nota pero nunca se completa |
- 
+
+Con la retícula editorial (columnas separadas de líneas base) ya funcionando como base, seguí una serie de ajustes finos sobre esa misma versión. Los cuento en el orden en que los fui probando:
+
+**1. La guía visual de la retícula.** Al principio dejé las líneas de la retícula dibujadas todo el tiempo de fondo, pensando que ayudaría a que se entendiera el sistema. Pero al verlo correr, sentí que delataba demasiado el "truco" — se notaba el andamio detrás de todo, y eso le quitaba la sensación de que el comportamiento emergía solo. Decidí ocultarla por defecto y agregar la tecla **G** para mostrarla únicamente cuando la necesito para explicar el sistema en la presentación.
+
+**2. El movimiento de las serif.** Hasta ese momento usaba `random()` puro en cada frame para el temblor de las serif. Verlo en movimiento se sentía nervioso, como estática — nada que ver con un trazo caligráfico. Cambié a Perlin noise, dándole a cada partícula su propia semilla (`nOffsetX`, `nOffsetY`) para que cada una recorriera su propia curva suave en el tiempo. Ahí sí se sintió como un gesto de tinta, no como ruido digital.
+
+**3. El confinamiento de las poblaciones.** Probé confinar tanto a las sans como a las serif dentro del área de la retícula. Se sentía raro: el ruido, que se supone que no respeta límites, estaba obedeciendo el mismo límite que el orden. Dejé a las sans confinadas (tienen que vivir dentro de su propio sistema) pero liberé a las serif para que puedan salirse de la retícula y recorrer toda la pantalla — el orden tiene límites que él mismo se impone, el ruido no.
+
+**4. El signo de Orden→Ruido.** Probé qué pasaba si ese valor era positivo, es decir, si el orden también atraía al ruido en vez de repelerlo. El resultado fue que todo colapsaba en una sola mancha mezclada de puntos y cuadrados — se perdía por completo la lectura de "invasión", porque ya no había ninguna resistencia de por medio. Lo cambié a negativo para que las sans reaccionen alejándose del ruido que se les acerca.
+
+**5. La fuerza de la retícula.** Por último, subí ese valor muy alto (por encima de 0.1) solo para ver el extremo. La retícula quedaba perfecta y estática — se veía ordenada, pero completamente muerta, sin ninguna tensión. Es el mejor ejemplo que tengo de lo que *no* quiero: todo diseñado, nada emergente. Fijé un rango recomendado entre 0.03 y 0.06, donde la retícula se nota pero nunca se termina de completar del todo.
+
 **Código:**
 ```js
 
@@ -989,9 +992,7 @@ function draw() {
     a.vy += fy * params.forceScale * 0.0001;
 
     if (a.type === SERIF && params.noiseStrength > 0) {
-      // Perlin noise en vez de random(): cada partícula serif recorre
-      // su propia curva suave, como un trazo caligráfico, en lugar
-      // de temblar al azar frame a frame (mucho más cercano a Max Cooper).
+      
       const nx = (noise(a.nOffsetX + noiseT) - 0.5) * 2;
       const ny = (noise(a.nOffsetY + noiseT) - 0.5) * 2;
       a.vx += nx * params.noiseStrength;
@@ -1083,15 +1084,12 @@ function setupPanelToggle() {
   });
 }
 ```
- 
-**Captura:**
-![Prueba 4 — refinamiento del sistema de retícula editorial](<img width="2127" height="1097" alt="image" src="https://github.com/user-attachments/assets/ea3bf05a-9fef-46dc-9c5f-4f368ce12ebf" />
-)
 
+**Captura:**
+
+<img width="2127" height="1097" alt="image" src="https://github.com/user-attachments/assets/ea3bf05a-9fef-46dc-9c5f-4f368ce12ebf" />
 
 ---
-
-
 
 ## 6. Manifestaciones del sistema
 
@@ -1133,10 +1131,12 @@ Misma configuración de la manifestación A, pero con una nueva semilla aleatori
 **Nota propuesta:** 100.00 ÷ 20 = **5.0 / 5**
 
 **Sustento por criterio:**
-- *Intención (100%):* la retícula y la invasión se leen sin explicación previa — cualquiera que vea el sistema corriendo dice "eso parece una página", no "eso es una letra" (el registro de pruebas #3 documenta justo la corrección que llevó a esto).
+- *Intención (100%):* la retícula y la invasión se leen sin explicación previa — cualquiera que vea el sistema corriendo dice "eso parece una página", no "eso es una letra" (la **Prueba 3**, sección 5, cuenta justo la corrección que llevó a esto: descarté la letra "A" en cuanto vi que traicionaba la intención).
 - *Justificación (100%):* cada decisión de la ficha (sección 2) tiene su frase completa en el formato pedido (sección 3): qué elegí, qué quiero hacer perceptible, qué espero que produzca. Ningún parámetro quedó sin justificar.
 - *Comprensión técnica (100%):* puedo explicar y modificar en vivo la función de fuerza triangular, el confinamiento diferenciado por tipo, y el uso de Perlin noise — sin necesidad de leer el código línea por línea, como pide la actividad.
-- *Identidad reconocible (100%):* la manifestación D confirma que, con los mismos parámetros y una semilla distinta, la identidad (columnas parciales + invasión) se mantiene; las manifestaciones B y C muestran los límites del espacio de parámetros donde esa identidad se pierde, lo cual demuestra que conozco ese límite con precisión.
-- *Experimentación (100%):* ocho ajustes registrados con hallazgo y decisión explícita (sección 5), incluyendo cuatro descartes documentados con su razón (#1, #3, #5, #7) — no son ajustes cosméticos, cada uno cambió una regla del sistema.
+- *Identidad reconocible (100%):* la **Manifestación D** (sección 6) confirma que, con los mismos parámetros y una semilla distinta, la identidad (columnas parciales + invasión) se mantiene; las **Manifestaciones B y C** muestran los límites del espacio de parámetros donde esa identidad se pierde, lo cual demuestra que conozco ese límite con precisión.
+- *Experimentación (100%):* cuatro pruebas narradas en la sección 5, cada una con lo que probé, lo que encontré y por qué decidí lo que decidí — **Prueba 1** (cercanía/evasión, descartada por no conectar con mi disciplina), **Prueba 2** (grilla uniforme, refinada hacia columnas + líneas base), **Prueba 3** (letra "A", descartada por traicionar la intención) y **Prueba 4** (cinco ajustes sucesivos sobre la versión final, tres de ellos también descartados). Ningún ajuste fue cosmético — cada uno cambió una regla real del sistema.
 - *Diseñado vs. emergente (100%):* puedo señalar exactamente qué fue diseñado (retícula, matriz, radios, tipos de movimiento) y qué es emergente (la posición final de cada bloque, el momento y lugar donde el ruido invade) — esa distinción está mapeada explícitamente en el guion de presentación (sección 8, punto 5).
+
+
 
