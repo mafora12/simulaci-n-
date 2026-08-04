@@ -1,5 +1,5 @@
 # Actividad 05 — Reto de diseño: una contradicción en movimiento
-### Unidad 2 · Simulación 
+### Unidad 2 · Simulación
 
 ---
 
@@ -126,6 +126,7 @@ Esta sección cuenta, en orden, el camino real que seguí hasta llegar a la vers
 
 ---
 
+<a id="prueba-1"></a>
 #### Prueba 1 — Cercanía vs. miedo a la intimidad
 
 Al principio ni siquiera pensé en tipografía. Mi primera idea fue puramente emocional: quería explorar la tensión entre necesitar cercanía y tenerle miedo a la intimidad, así que armé dos poblaciones — un "Buscador" y un "Evasivo" — con radios de pánico y alcances distintos. Le di al Buscador un radio de pánico muy chiquito (6px, casi tolera el contacto directo) y un alcance grande (150px, "ve" de lejos), mientras que al Evasivo le puse un radio de pánico bastante más grande (22px, empieza a huir mucho antes de que lo toquen) y un alcance más corto (90px, tiene menos "radar"). Cuando lo corrí, funcionó exactamente como esperaba: se armaba un ciclo de persecución y huida que nunca se resolvía, uno siempre llegaba justo cuando el otro ya se estaba yendo.
@@ -135,8 +136,8 @@ El problema no fue técnico, fue conceptual: al verlo terminado me di cuenta de 
 **Código:**
 ```js
 const sketch = (p) => {
-  const TYPE_A = 0; 
-  const TYPE_B = 1; 
+  const TYPE_A = 0; // Buscador
+  const TYPE_B = 1; // Evasivo
 
   let particles = [];
 
@@ -263,7 +264,7 @@ const sketch = (p) => {
     }
   };
 
-
+  // ---- UI wiring ----
   function bindRange(id, decimals, onChange) {
     const el = document.getElementById(id);
     const out = document.getElementById(id + '-out');
@@ -306,6 +307,7 @@ new p5(sketch);
 
 ---
 
+<a id="prueba-2"></a>
 #### Prueba 2 — Orden vs. ruido con grilla uniforme
 
 Con la idea de orden vs. ruido ya mapeada a sans-serif vs. serif, mi primer intento fue el más simple que se me ocurrió: hacer que las partículas sans se atrajeran hacia el punto más cercano de una cuadrícula regular, dibujando líneas cada 42px tanto en horizontal como en vertical (`drawGrid`). Cuando lo corrí, el resultado no me convenció: se veía como una hoja de cuaderno cuadriculado, no como un sistema tipográfico. El problema es que una cuadrícula uniforme no distingue entre "columna editorial" y "línea de base", que es justo lo que hace que una retícula de diseño se sienta como una página y no como papel milimetrado.
@@ -315,8 +317,8 @@ No descarté el concepto — la idea de atraer partículas a puntos fijos seguí
 **Código:**
 ```js
 const sketch = (p) => {
-  const SANS = 0;  
-  const SERIF = 1; 
+  const SANS = 0;  // orden
+  const SERIF = 1; // ruido
 
   let particles = [];
 
@@ -505,6 +507,7 @@ new p5(sketch);
 
 ---
 
+<a id="prueba-3"></a>
 #### Prueba 3 — Formación de la letra "A"
 
 Para resolver el problema de la prueba anterior, probé algo mucho más literal: en vez de una cuadrícula, le di a cada partícula sans un punto fijo asignado sobre el trazo de la letra "A" (calculé esos puntos con una función `buildLetterNorm`, repartiéndolos a lo largo de las dos piernas y el travesaño de la letra). Técnicamente salió perfecto — la letra se armaba con las partículas y las serif la invadían y desordenaban justo como quería.
@@ -519,8 +522,8 @@ const sketch = (p) => {
   const LETTER_N = 160;
 
   let particles = [];
-  let letterNorm = [];   
-  let letterPx = [];     
+  let letterNorm = [];   // puntos normalizados (0..1) sobre la letra A
+  let letterPx = [];     // puntos mapeados a pixeles, recalculado cada frame
 
   let params = {
     countS: 130,
@@ -752,6 +755,7 @@ new p5(sketch);
 
 ---
 
+<a id="prueba-4"></a>
 #### Prueba 4 — Refinamiento del sistema de retícula editorial
 
 Con la retícula editorial (columnas separadas de líneas base) ya funcionando como base, seguí una serie de ajustes finos sobre esa misma versión. Los cuento en el orden en que los fui probando:
@@ -992,7 +996,9 @@ function draw() {
     a.vy += fy * params.forceScale * 0.0001;
 
     if (a.type === SERIF && params.noiseStrength > 0) {
-      
+      // Perlin noise en vez de random(): cada partícula serif recorre
+      // su propia curva suave, como un trazo caligráfico, en lugar
+      // de temblar al azar frame a frame (mucho más cercano a Max Cooper).
       const nx = (noise(a.nOffsetX + noiseT) - 0.5) * 2;
       const ny = (noise(a.nOffsetY + noiseT) - 0.5) * 2;
       a.vx += nx * params.noiseStrength;
@@ -1095,22 +1101,26 @@ function setupPanelToggle() {
 
 Todas producidas con el mismo código, cambiando solo semilla y/o parámetros expuestos en el panel.
 
+<a id="manifestacion-a"></a>
 **Manifestación A — configuración base**
 `Columnas: 6 · Ritmo de línea base: 26 · Fuerza de retícula: 0.045 · Ruido: 0.25`
 Bloques y columnas parcialmente legibles; invasión roja visible pero no dominante. Es la configuración que mejor representa la intención.
 
+<a id="manifestacion-b"></a>
 **Manifestación B — orden casi perfecto (descarte deliberado)**
 `Fuerza de retícula: 0.12 · Ruido: 0.05`
 La retícula se arma casi por completo. Útil para mostrar en la presentación como ejemplo de *lo que pasa cuando se pierde la tensión*: se ve ordenado pero deja de ser interesante.
 
+<a id="manifestacion-c"></a>
 **Manifestación C — ruido dominante (descarte deliberado)**
 `Fuerza de retícula: 0.02 · Ruido: 0.9 · Serif: 90`
 El ruido devora cualquier alineación; no queda identidad reconocible de "página". Sirve como el otro extremo del espectro de pruebas.
 
+<a id="manifestacion-d"></a>
 **Manifestación D — semilla distinta, mismos parámetros que A**
 Misma configuración de la manifestación A, pero con una nueva semilla aleatoria. Confirma que la *identidad* del sistema (columnas + invasión) se mantiene aunque la composición exacta cambie — esto es lo que se pide como "variabilidad entre ejecuciones" con "identidad reconocible".
 
-[*(Versión final)*]([https://editor.p5js.org/mafora12/full/djf8Vghor](https://editor.p5js.org/mafora12/full/djf8Vghor))
+[*(Versión final)*](https://editor.p5js.org/mafora12/full/djf8Vghor)
 
 ---
 
@@ -1129,12 +1139,10 @@ Misma configuración de la manifestación A, pero con una nueva semilla aleatori
 **Nota propuesta:** 100.00 ÷ 20 = **5.0 / 5**
 
 **Sustento por criterio:**
-- *Intención (100%):* la retícula y la invasión se leen sin explicación previa — cualquiera que vea el sistema corriendo dice "eso parece una página", no "eso es una letra" (la **Prueba 3**, sección 5, cuenta justo la corrección que llevó a esto: descarté la letra "A" en cuanto vi que traicionaba la intención).
-- *Justificación (100%):* cada decisión de la ficha (sección 2) tiene su frase completa en el formato pedido (sección 3): qué elegí, qué quiero hacer perceptible, qué espero que produzca. Ningún parámetro quedó sin justificar.
-- *Comprensión técnica (100%):* puedo explicar y modificar en vivo la función de fuerza triangular, el confinamiento diferenciado por tipo, y el uso de Perlin noise — sin necesidad de leer el código línea por línea, como pide la actividad.
-- *Identidad reconocible (100%):* la **Manifestación D** (sección 6) confirma que, con los mismos parámetros y una semilla distinta, la identidad (columnas parciales + invasión) se mantiene; las **Manifestaciones B y C** muestran los límites del espacio de parámetros donde esa identidad se pierde, lo cual demuestra que conozco ese límite con precisión.
-- *Experimentación (100%):* cuatro pruebas narradas en la sección 5, cada una con lo que probé, lo que encontré y por qué decidí lo que decidí — **Prueba 1** (cercanía/evasión, descartada por no conectar con mi disciplina), **Prueba 2** (grilla uniforme, refinada hacia columnas + líneas base), **Prueba 3** (letra "A", descartada por traicionar la intención) y **Prueba 4** (cinco ajustes sucesivos sobre la versión final, tres de ellos también descartados). Ningún ajuste fue cosmético — cada uno cambió una regla real del sistema.
-- *Diseñado vs. emergente (100%):* puedo señalar exactamente qué fue diseñado (retícula, matriz, radios, tipos de movimiento) y qué es emergente (la posición final de cada bloque, el momento y lugar donde el ruido invade) — esa distinción está mapeada explícitamente en el guion de presentación (sección 8, punto 5).
-
-
+- *Intención (100%):* la retícula y la invasión se leen sin explicación previa — cualquiera que vea el sistema corriendo dice "eso parece una página", no "eso es una letra" (la [**Prueba 3**](#prueba-3), sección 5, cuenta justo la corrección que llevó a esto: descarté la letra "A" en cuanto vi que traicionaba la intención).
+- *Justificación (100%):* cada decisión de la ficha ([sección 2](#2-ficha-breve-del-sistema)) tiene su frase completa en el formato pedido ([sección 3](#3-justificación-de-decisiones)): qué elegí, qué quiero hacer perceptible, qué espero que produzca. Ningún parámetro quedó sin justificar.
+- *Comprensión técnica (100%):* puedo explicar y modificar en vivo la función de fuerza triangular, el confinamiento diferenciado por tipo, y el uso de Perlin noise — sin necesidad de leer el código línea por línea, como pide la actividad (ver [Prueba 4](#prueba-4), donde documento cómo llegué a cada una de esas reglas).
+- *Identidad reconocible (100%):* la [**Manifestación D**](#manifestacion-d) confirma que, con los mismos parámetros y una semilla distinta, la identidad (columnas parciales + invasión) se mantiene; las [**Manifestaciones B**](#manifestacion-b) y [**C**](#manifestacion-c) muestran los límites del espacio de parámetros donde esa identidad se pierde, lo cual demuestra que conozco ese límite con precisión.
+- *Experimentación (100%):* cuatro pruebas narradas en la [sección 5](#5-registro-de-pruebas), cada una con lo que probé, lo que encontré y por qué decidí lo que decidí — [**Prueba 1**](#prueba-1) (cercanía/evasión, descartada por no conectar con mi disciplina), [**Prueba 2**](#prueba-2) (grilla uniforme, refinada hacia columnas + líneas base), [**Prueba 3**](#prueba-3) (letra "A", descartada por traicionar la intención) y [**Prueba 4**](#prueba-4) (cinco ajustes sucesivos sobre la versión final, tres de ellos también descartados). Ningún ajuste fue cosmético — cada uno cambió una regla real del sistema.
+- *Diseñado vs. emergente (100%):* puedo señalar exactamente qué fue diseñado (retícula, matriz, radios, tipos de movimiento) y qué es emergente (la posición final de cada bloque, el momento y lugar donde el ruido invade) — esa distinción está mapeada explícitamente en el [guion de presentación, punto 5](#guion-punto-5).
 
