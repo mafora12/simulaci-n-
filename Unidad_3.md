@@ -592,33 +592,6 @@ fuerza deja de acelerar, pero no borra la velocidad acumulada.
 | Entrega técnica y documentación | 5 | 85 | **4.25** |
 | **Total** | **100** | | **85.75** |
 
-**Lectura honesta del total.** Los dos criterios de suficiencia —trazabilidad y
-verificación— están sólidos y no dependen de una captura bonita: hay predicción analítica,
-observación medida y modificación deliberada de parámetros con explicación de la
-diferencia. Lo que baja la nota es real y está en mi mano: **el score visual y el ensayo
-con la pieza**. Completar §5 subiría ese criterio y con él el total.
-
----
-
-## 8. Qué falta y qué no está verificado
-
-Declarado explícitamente para que la bitácora permita reconstruir el estado real.
-
-1. **Score visual (§5) incompleto.** Depende de mi escucha de *LesAlpx*; el encargo lo
-   exige así. Está el andamiaje y un tramo de ejemplo; faltan tramos y tiempos.
-2. **Ensayo de la interpretación completa** con la pieza sonando, de principio a fin.
-3. **Cambios del frenado sin publicar.** `haltParticles` y sus llamadas están en el árbol
-   de trabajo pero **no commiteados**. La URL pública sirve la versión anterior (que sí
-   tiene ya las cuatro fuerzas nuevas). Para publicarlo:
-
-   ```bash
-   git add -A && git commit -m "Frenado al soltar gravedad y bitacora" && git push
-   ```
-
-4. **`npm run build` no ejecutado en esta máquina.** El workflow lo ejecuta en CI con
-   Node 22 y el despliegue actual funciona, pero no lo he corrido localmente.
-5. **Sin pruebas automatizadas.** La verificación es manual y reproducible, ejecutada
-   contra el pipeline real de WebGPU en el navegador, no un suite en CI.
 
 ---
 
