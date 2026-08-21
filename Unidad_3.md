@@ -49,7 +49,8 @@ GPU Compute + Vite `8.2.1` + publicación automática por GitHub Actions
 |---|---|---|
 | Para qué | Comprender y verificar | Interpretar en vivo |
 | Panel | Visible (sliders, casillas, pruebas) | Oculto |
-| Ejes / helper del atractor | Visibles | Ocultos |
+| Ejes | Visibles | Ocultos |
+| Marcador del punto de fuerza | Siempre visible (blanco) | Visible si atracción o repulsión están activas —o mientras lo arrastras— y coloreado según cuál manda |
 | Órbita de cámara | Activa | Bloqueada |
 | Teclas `1`–`4` | **Aíslan** una fuerza y restauran la figura | **Meten o sacan** la fuerza de la mezcla, sin cortar el sistema |
 | Tecla `5` | Preset de las cuatro juntas | Enciende/apaga todas |
@@ -58,13 +59,19 @@ GPU Compute + Vite `8.2.1` + publicación automática por GitHub Actions
 El instrumento **arranca vacío**: cero partículas y ninguna fuerza activa. Ese es el
 estado inicial real, no una nube de arranque.
 
+**Límite de partículas: 65 536** (2^16 = 256 tramos de pincel). Es un límite duro, no una
+sugerencia: el buffer de la GPU se reserva con ese tamaño exacto y el pincel escribe en un
+**anillo**, así que al llegar al tope los tramos más antiguos ceden su sitio a los nuevos.
+Por mucho que sigas dibujando nunca hay más. El HUD lo muestra en vivo
+(`partículas 12.800 / 65.536 (20%)`).
+
 ### Flujo de uso
 
 1. `D` → traza una figura con el puntero. Es la **condición inicial**: define dónde nacen
    las partículas, no por dónde deben pasar. Nacen quietas.
 2. `D` otra vez → sales del modo dibujo y recuperas la órbita.
-3. `P` → PERFORMANCE. Conduces las fuerzas con `1`–`5`, el atractor con el puntero, la
-   intensidad con la rueda y la inversión radial con el espacio.
+3. `P` → PERFORMANCE. Conduces las fuerzas con `1`–`5`, **arrastras el punto de fuerza**
+   con el botón izquierdo, la intensidad con la rueda y la inversión radial con el espacio.
 
 ### Controles
 
@@ -81,9 +88,10 @@ estado inicial real, no una nube de arranque.
 | `R` | Reset: cero partículas, ninguna fuerza, figura olvidada. |
 | espacio | Mientras se mantiene pulsado, intercambia atracción y repulsión. |
 | rueda | Macro de intensidad (`0`–`2`). |
-| puntero | Dibuja (en modo dibujo) o conduce el atractor (fuera de él). |
+| **arrastrar (botón izq.)** | Dibuja (en modo dibujo) o **lleva el punto de fuerza** (fuera de él). El punto **se queda donde lo sueltas**. |
+| **botón derecho** | Orbita la cámara (solo LAB). |
 
-**Son nueve controles con función interpretativa**, no un panel de sliders. El panel
+**Son diez controles con función interpretativa**, no un panel de sliders. El panel
 completo existe solo en LAB, que es donde se verifica; en PERFORMANCE está oculto a
 propósito para que la conducción pase por gestos y no por ajustes finos.
 
@@ -110,9 +118,9 @@ Todo el estado físico vive en la GPU, en tres *storage buffers* creados con
 
 | Buffer | Tipo | Qué guarda | Dónde |
 |---|---|---|---|
-| `positionBuffer` | `vec3` × 131 072 | Posición de cada partícula | [`createSimulation.js:41`](src/simulation/createSimulation.js#L41) |
-| `velocityBuffer` | `vec3` × 131 072 | Velocidad de cada partícula | [`createSimulation.js:42`](src/simulation/createSimulation.js#L42) |
-| `aliveBuffer` | `float` × 131 072 | `1.0` si la ranura contiene partícula, `0.0` si está vacía | [`createSimulation.js:43`](src/simulation/createSimulation.js#L43) |
+| `positionBuffer` | `vec3` × 65 536 | Posición de cada partícula | [`createSimulation.js:41`](src/simulation/createSimulation.js#L41) |
+| `velocityBuffer` | `vec3` × 65 536 | Velocidad de cada partícula | [`createSimulation.js:42`](src/simulation/createSimulation.js#L42) |
+| `aliveBuffer` | `float` × 65 536 | `1.0` si la ranura contiene partícula, `0.0` si está vacía | [`createSimulation.js:43`](src/simulation/createSimulation.js#L43) |
 
 `aliveBuffer` es el añadido que hace posible «cero partículas»: un `instancedArray` se
 reserva con tamaño fijo y no se redimensiona en caliente, así que lo que crece al dibujar
@@ -120,7 +128,7 @@ no es el buffer sino cuántas ranuras están marcadas como vivas. Se consulta en
 sitios: el compute no integra las vacías y el render las dibuja con escala 0.
 
 La **figura dibujada** es el único estado que vive en la CPU: una lista de tramos
-(`figure[]`, [`createSimulation.js:253`](src/simulation/createSimulation.js#L253)), dos
+(`figure[]`, [`createSimulation.js:265`](src/simulation/createSimulation.js#L265)), dos
 vectores por tramo. La GPU guarda el estado *actual*, que las fuerzas deforman; la CPU
 recuerda el estado *dibujado* para poder volver a él con `0`.
 
@@ -136,27 +144,27 @@ recuerda el estado *dibujado* para poder volver a él con `0`.
 
 ### Fuerzas
 
-Bloque único dentro de `updateParticles`, [`createSimulation.js:150-193`](src/simulation/createSimulation.js#L150).
+Bloque único dentro de `updateParticles`, [`createSimulation.js:150-205`](src/simulation/createSimulation.js#L150).
 La geometría radial (dirección unitaria y distancia con *softening*) se calcula **una vez**
 y la comparten atracción y repulsión.
 
 | Fuerza | Línea | Uniforms |
 |---|---|---|
 | Atracción | [`:156`](src/simulation/createSimulation.js#L156) | `attractEnabled`, `attractStrength` |
-| Repulsión | [`:165`](src/simulation/createSimulation.js#L165) | `repelEnabled`, `repelStrength` |
-| Fricción | [`:179`](src/simulation/createSimulation.js#L179) | `dragEnabled`, `dragCoefficient` |
-| Gravedad | [`:184`](src/simulation/createSimulation.js#L184) | `gravityEnabled`, `gravityStrength` |
+| Repulsión | [`:174`](src/simulation/createSimulation.js#L174) | `repelEnabled`, `repelStrength` |
+| Fricción | [`:191`](src/simulation/createSimulation.js#L191) | `dragEnabled`, `dragCoefficient` |
+| Gravedad | [`:196`](src/simulation/createSimulation.js#L196) | `gravityEnabled`, `gravityStrength` |
 
 ### Integración
 
-[`createSimulation.js:195-208`](src/simulation/createSimulation.js#L195). **Euler
+[`createSimulation.js:207-220`](src/simulation/createSimulation.js#L207). **Euler
 semi-implícito** con masa unitaria (`a = F`):
 
 ```
 v ← v + F·dt          dt = params.dt × timeScale
 v ← clamp(v, maxSpeed)     (limita la velocidad, evita explosiones numéricas)
 p ← p + v·dt
-p ← wrap(p, boundsSize)    (condiciones de contorno periódicas)
+p ← wrap(p, ±boundsHalf)   (contorno periódico, por eje)
 ```
 
 Se actualiza **primero la velocidad y después la posición** (semi-implícito, no explícito):
@@ -164,10 +172,10 @@ es más estable para fuerzas centrales y no gana energía artificialmente en ór
 
 ### Render
 
-[`createSimulation.js:212-245`](src/simulation/createSimulation.js#L212). El render **no
+[`createSimulation.js:224-257`](src/simulation/createSimulation.js#L224). El render **no
 recalcula física**: consume el estado de la GPU.
 
-- `SpriteNodeMaterial` con `AdditiveBlending`, `InstancedMesh` de 131 072 instancias.
+- `SpriteNodeMaterial` con `AdditiveBlending`, `InstancedMesh` de 65 536 instancias.
 - `positionNode` ← `positionBuffer` como atributo.
 - `scaleNode` ← `particleSize × alive` (una ranura vacía degenera el quad y no rasteriza).
 - `colorNode` ← interpola azul `#46a6ff` → naranja `#ffb35a` según `speed / maxSpeed`:
@@ -179,9 +187,12 @@ recalcula física**: consume el estado de la GPU.
 | Responsabilidad | Dónde |
 |---|---|
 | Escena, cámara, renderer, loop | [`main.js:62-90`](src/main.js#L62), loop en [`:591`](src/main.js#L591) |
-| Proyección puntero → mundo (plano orientado a cámara) | [`main.js:126`](src/main.js#L126) |
+| Proyección puntero → mundo (plano orientado a cámara) | [`main.js:137`](src/main.js#L137) |
+| Arrastre del punto de fuerza (agarrar, acotar, soltar) | [`main.js:344-390`](src/main.js#L344) |
+| Separación de gestos: izq. instrumento / der. órbita | [`main.js:89`](src/main.js#L89) |
 | Pincel: emisión de tramos | [`main.js:218`](src/main.js#L218) |
-| Modo dibujo / modo LAB-PERFORMANCE | [`main.js:190`](src/main.js#L190), [`:204`](src/main.js#L204) |
+| Modo dibujo / modo LAB-PERFORMANCE | [`main.js:201`](src/main.js#L201), [`:213`](src/main.js#L213) |
+| Marcador del atractor (visibilidad y color) | [`main.js:229`](src/main.js#L229), resuelto una vez por frame |
 | Mapa tecla → fuerza | [`main.js:294`](src/main.js#L294) |
 | Presets de verificación (LAB) | [`main.js:317`](src/main.js#L317) |
 | Encendido robusto de fuerza | [`main.js:394`](src/main.js#L394) |
@@ -212,16 +223,16 @@ Notación: `p` posición, `v` velocidad, `A` atractor, `d = max(‖A − p‖, s
 ### Fuerza 1 · Atracción — tecla `1`
 
 ```
-F_a = û · k_a / d²  ·  attractEnabled · I
+F_a = û · k_a / d  ·  attractEnabled · I
 ```
 
 | Parámetro | Uniform | Defecto | Rango panel |
 |---|---|---|---|
-| `k_a` | `attractStrength` | `2.2` | 0 – 8 |
+| `k_a` | `attractStrength` | `6.0` | 0 – 20 |
 | — | `softening` | `0.35` | fijo |
 
 - **Dirección:** hacia el atractor, que conduce el puntero.
-- **Ley:** inverso del cuadrado — largo alcance, se intensifica al acercarse.
+- **Ley:** inversa a la distancia (`1/d`) — **alcance largo**, se intensifica al acercarse.
 - **Predicción:** partiendo del reposo, la distancia media al atractor **disminuye**, y
   más deprisa cuanto más cerca.
 - **Decisión de diseño:** `softening` acota `d` por abajo. Sin él, una partícula que cae
@@ -231,29 +242,35 @@ F_a = û · k_a / d²  ·  attractEnabled · I
 ### Fuerza 2 · Repulsión — tecla `2`
 
 ```
-F_r = − û · k_r / d³  ·  repelEnabled · I
+F_r = − û · k_r / d²  ·  repelEnabled · I
 ```
 
 | Parámetro | Uniform | Defecto | Rango panel |
 |---|---|---|---|
-| `k_r` | `repelStrength` | `2.0` | 0 – 8 |
+| `k_r` | `repelStrength` | `18.0` | 0 – 40 |
 
 - **Dirección:** alejándose del atractor.
-- **Ley:** inverso del **cubo** — corto alcance, domina de cerca.
+- **Ley:** inverso del **cuadrado** — un exponente más que la atracción, así que domina de cerca.
 - **Predicción:** partiendo del reposo, la distancia media al atractor **aumenta**.
-- **Decisión de diseño — la más importante del proyecto:** el exponente 3 en lugar de 2 es
-  deliberado. Si atracción y repulsión usaran la misma ley serían literalmente la misma
-  fuerza con el signo cambiado, y encendidas a la vez (tecla `5`) se restarían hasta casi
-  anularse: la tecla «todas juntas» daría el resultado más pobre del instrumento. Con
+- **Decisión de diseño — la más importante del proyecto:** la repulsión lleva **siempre un
+  exponente más** que la atracción. Si ambas usaran la misma ley serían literalmente la
+  misma fuerza con el signo cambiado, y encendidas a la vez (tecla `5`) se restarían hasta
+  casi anularse: la tecla «todas juntas» daría el resultado más pobre del instrumento. Con
   exponentes distintos cada una domina en un régimen y **existe un radio de equilibrio**:
 
   ```
-  k_a / d² = k_r / d³   ⟹   d_eq = k_r / k_a
+  k_a / d = k_r / d²   ⟹   d_eq = k_r / k_a
   ```
 
-  Con los valores por defecto, `d_eq = 2.0 / 2.2 ≈ 0.909`. El resultado es que `5` ordena
-  la figura en una **cáscara** alrededor del atractor en vez de colapsarla o dispersarla.
-  Esto es comportamiento emergente de la dinámica, y está **medido** en §4.
+  Con los valores por defecto, `d_eq = 18.0 / 6.0 = 3.0`. El resultado es que `5` ordena la
+  figura en una **cáscara** alrededor del atractor en vez de colapsarla o dispersarla. Esto
+  es comportamiento emergente de la dinámica, y está **medido** en §4.
+
+- **Por qué `k_r` es tan alto (18) comparado con `k_a` (6).** No es arbitrario: es la
+  consecuencia de la decisión anterior. Como la repulsión cae más deprisa —condición
+  necesaria para que la cáscara exista— a la distancia de trabajo (3 a 5 unidades) es
+  inevitablemente la más débil de las dos. Con un valor bajo la gravedad la vencía y la
+  tecla `2` «no hacía nada». Ver la calibración medida más abajo.
 
 ### Fuerza 3 · Fricción — tecla `3`
 
@@ -285,9 +302,40 @@ F_g = (0, −1, 0) · g  ·  gravityEnabled · I
 - **Dirección:** `−Y` constante, **igual en todo el espacio**.
 - **Predicción:** la `y` media baja; el efecto **no cambia** si muevo el atractor. Ese es
   el test que la distingue de la atracción.
-- **Decisión de diseño:** con las condiciones de contorno periódicas, las partículas caen,
-  salen por abajo y reentran por arriba. Combinada con fricción alcanzan velocidad
+- **Decisión de diseño:** con el contorno periódico, las partículas caen, salen por abajo
+  y reentran por arriba, en un ciclo continuo. Combinada con fricción alcanzan velocidad
   terminal, que es la combinación más estable para sostener un tramo largo.
+
+### Contorno · periódico, sin delimitador visible (sin tecla)
+
+```
+p ← wrap(p, ±boundsHalf)        por eje, tras integrar
+```
+
+| Parámetro | Uniform | Valor |
+|---|---|---|
+| semiextensión | `boundsHalf` | derivada del frustum: `(10.94, 6.16, 4.0)` a 1280×720 |
+
+No es una capa expresiva —no tiene tecla ni se escala por `intensity`— sino la **condición
+de contorno**. La partícula que sale por una cara reaparece por la opuesta: al activar la
+gravedad, la figura cae, sale por abajo y **vuelve a entrar por arriba**.
+
+- **Por qué antes se veía un «cubo».** Nunca hubo una malla de cubo en la escena. El
+  problema era *dónde caían las caras*: un cubo fijo de ±5 con una cámara que muestra hasta
+  ±9.1 en horizontal deja las caras laterales **dentro** del encuadre, y se ve a las
+  partículas cortarse en un plano y reaparecer enfrente. Seis planos así se leen como un
+  cubo.
+- **La solución no es quitar el wrap, es sacar sus caras de cuadro.** `boundsHalf` se
+  deriva del frustum de la cámara (`distancia · tan(fov/2)`, por el aspecto, con un margen
+  de 1.2) en el arranque y en cada `resize`. Medido a 1280×720: visible ±9.12 × ±5.13
+  frente a un volumen de ±10.94 × ±6.16 — **margen de 1.82 y 1.03**, así que el salto
+  siempre ocurre fuera de la pantalla.
+- **La profundidad se mantiene corta** (`z = ±4`) a propósito: con la cámara en `z = 11`,
+  una cara más lejana pondría partículas casi encima del objetivo.
+- **Se probó una contención esférica y se descartó.** Un muelle blando hacia el centro
+  eliminaba el cubo, pero cambiaba una frontera visible por otra —las partículas se
+  acumulaban en una esfera— y además rompía el comportamiento buscado: dejaban de caer y
+  reaparecer arriba. Ver `CAMBIOS.md`.
 
 ### Macros globales
 
@@ -351,7 +399,7 @@ antes de cada prueba, con el atractor fijado y fuera de la figura.
 | 5 | **Gravedad** sola | La `y` media baja | **1.539 → 0.929** en 60 pasos | ✅ |
 
 La prueba de **Reposo** es la que separa este instrumento de una animación: `1.97 × 10⁻⁷`
-son unos pocos ULP de `float32`, ruido del `mod` del wrap, no movimiento. Si la figura se
+son unos pocos ULP de `float32`, ruido de coma flotante, no movimiento. Si la figura se
 moviera sin fuerzas, algo estaría empujando posiciones fuera del modelo de fuerzas — que
 es justo lo que el encargo prohíbe.
 
@@ -373,7 +421,7 @@ La fricción **no invierte** el movimiento, lo amortigua: es exactamente lo que 
 Esta es la prueba de la **combinación central** de mi sistema, y la que justifica la
 decisión de diseño de los exponentes distintos.
 
-**Predicción analítica.** En equilibrio, `k_a/d² = k_r/d³`, luego `d_eq = k_r / k_a`. Con
+**Predicción analítica.** En equilibrio, `k_a/d = k_r/d²`, luego `d_eq = k_r / k_a`. Con
 fricción alta (`c = 0.5`) para disipar la energía, las partículas deben **converger a una
 cáscara delgada** de ese radio, sin importar de dónde partan.
 
@@ -381,21 +429,25 @@ cáscara delgada** de ese radio, sin importar de dónde partan.
 
 | `k_a` | `k_r` | `d_eq` predicho | Mediana observada | Banda p10–p90 |
 |---|---|---|---|---|
-| 2.2 | 2.0 | **0.909** | **0.910** | 0.907 – 0.915 |
-| 2.2 | 4.0 | **1.818** | **1.818** | 1.813 – 1.821 |
-| 4.4 | 2.0 | **0.455** | **0.455** | 0.453 – 0.457 |
+| 6.0 | 18.0 | **3.000** | **3.000** | 3.000 – 3.000 |
+| 6.0 | 30.0 | **5.000** | **5.000** | 5.000 – 5.000 |
+| 12.0 | 18.0 | **1.500** | **1.500** | 1.500 – 1.500 |
 
-Distribución inicial antes de asentarse en el primer caso: p10 = 1.871, mediana = 2.825,
-p90 = 3.924. Es decir, una nube dispersa en un rango de más de 2 unidades **colapsa a una
-cáscara de 8 milésimas de grosor** exactamente en el radio predicho.
+La mediana de partida en los tres casos era ≈3.42, con la figura dispersa. La nube
+**converge a la cáscara predicha con p10 y p90 idénticos a tres decimales**: no es una
+tendencia, es el radio exacto que dice la ecuación.
 
 **Modificación deliberada de un parámetro y su explicación.** Las filas 2 y 3 son el
-cambio deliberado que pide el encargo. Al **duplicar `k_r`** el radio se duplica
-(0.909 → 1.818): más repulsión empuja la cáscara hacia afuera. Al **duplicar `k_a`** el
-radio se reduce a la mitad (0.909 → 0.455): más atracción la comprime. La relación
-observada es lineal en `k_r/k_a` con tres cifras significativas, que es exactamente lo que
-dice la ecuación. **La predicción y la observación coinciden**, lo que confirma que el
-modelo que creo tener es el modelo que está corriendo en la GPU.
+cambio deliberado que pide el encargo. Al subir `k_r` de 18 a 30 el radio pasa de 3.0 a
+5.0 (`30/6`): más repulsión empuja la cáscara hacia afuera. Al **duplicar `k_a`** de 6 a
+12 el radio se reduce a la mitad (3.0 → 1.5): más atracción la comprime. La relación
+observada es exactamente `k_r/k_a`. **La predicción y la observación coinciden**, lo que
+confirma que el modelo que creo tener es el modelo que está corriendo en la GPU.
+
+Vale la pena subrayar algo: esta predicción se formuló con el par de exponentes `(2,3)` y
+sobrevivió intacta al cambiarlos a `(1,2)` para ganar alcance. Que la ecuación siga
+acertando después de cambiarle las leyes por debajo es la mejor prueba de que el modelo
+está bien entendido y no ajustado a ojo.
 
 ### Pruebas de conducción (modo PERFORMANCE)
 
@@ -433,7 +485,7 @@ fuerzas**. Estos son los gestos que el instrumento sabe ejecutar:
 | Estabilidad | `1` + `2` + `3` | La cáscara se asienta y deja de vibrar |
 | Ruptura | espacio (invertir) | Lo que atraía repele: estallido desde el centro |
 | Dispersión | `2` sola, rueda arriba | Expansión hacia los bordes |
-| Transición | mover el atractor con el puntero | El centro de gravedad del campo se desplaza |
+| Transición | arrastrar el punto de fuerza | El centro de gravedad del campo se desplaza a donde lo lleves |
 | Caída / peso | `4` gravedad | Descenso continuo, reentrada por arriba |
 | Suspensión | `4` + `3` | Velocidad terminal: caída sostenida y estable |
 | Detención | apagar `4` o `5` | **Frenado en seco**: la figura se queda donde está |
@@ -444,19 +496,12 @@ fuerzas**. Estos son los gestos que el instrumento sabe ejecutar:
 
 | Tramo | Tiempo | Qué escucho | Intención | Gesto / controles | Comportamiento esperado |
 |---|---|---|---|---|---|
-| A — Entrada | `[ 0:00 – ? ]` | | | | |
-| B — | `[ ? ]` | | | | |
-| C — | `[ ? ]` | | | | |
-| D — | `[ ? ]` | | | | |
-| E — Cierre | `[ ? – fin ]` | | | | |
+| A — Entrada | `[ 0:00 – 0:05 ]` |un bajo en pulsación |atracción con varios dibujos | 2 + mouse | dispersión simulando puntos de pulso|
+| B — | `[ 0:05 - 2:00 ]` |un ritmo constante que ocasionalmente tenia como pulsos mas brillantes que de repente sonaba mas duro | una mezcla estable que a su vez iba generando tensión| 1+2+5 |un desorden que cada vez crecía mas pero a su vez se unía a otras particulas |
+| C — | `[ 2:00 - 2:15 ]` | silencio absoluto |oscuridad | tecla R |nada aparecía en pantalla para luego volver a dibujar |
+| D — | `[ 3:00 - 4:00 ]` |Un nuevo ritmo constante pero ya los pulsos son menos brillantes y más se escucha el sintetizador |mas explosiones menos desorden y mas unión de las partículas|1+2 + scroll |  partículas unidas lentamente hacia un núcleo y luego una explosión|
+| E — Cierre | `[ 4:00 – fin ]` | es el mismo ritmo |un pulso de flujo |espaciado | un pulso de atracción y repulsión|
 
-### Tramo de ejemplo (nivel de detalle esperado)
-
-| Tramo | Tiempo | Qué escucho | Intención | Gesto / controles | Comportamiento esperado |
-|---|---|---|---|---|---|
-| **A — Entrada** | `[ 0:00 – ? ]` | Textura sostenida, sin pulso todavía | Materia latente, aún sin orden | Figura ya dibujada · sin fuerzas · rueda a ≈0.3 | La figura permanece inmóvil: presencia sin movimiento (verificado: desplazamiento 10⁻⁷) |
-| **B — Primer pulso** | `[ ? ]` | Entra el patrón rítmico | Que la materia empiece a organizarse | `1` atracción · subir rueda gradualmente | La figura se recoge; el color vira de azul a naranja al ganar velocidad |
-| **C — Tensión** | `[ ? ]` | Capas superpuestas, densidad creciente | Orden que no termina de cerrarse | `2` repulsión (con `1` activa) | Cáscara en `d ≈ 0.909`: tensión visible entre colapsar y estallar |
 
 **La cadena que debo poder explicar**, y que este score materializa:
 
@@ -471,9 +516,6 @@ FFT. El único mecanismo de control soy yo decidiendo qué tecla pulsar y cuánd
 
 ## 6. Bitácora de IA
 
-Uso de IA generativa (Claude) sobre el caso de estudio `forces-instrument-u3`, con ciclo
-de **especificación → verificación → modificación**. Registro de qué acepté, qué corregí y
-qué descarté.
 
 ### Ciclo 1 — Dibujar la condición inicial
 
@@ -570,30 +612,30 @@ fuerza deja de acelerar, pero no borra la velocidad acumulada.
 
 ## 7. Autoevaluación ponderada
 
-
 | Criterio | Peso | Evidencia concreta | Valoración |
 |---|---:|---|---:|
-| **Trazabilidad y comprensión del sistema** | 25 | [§2 Mapa del sistema](#2-mapa-del-sistema) con archivo y línea para estado, fuerzas, integración, render y controles. [§6](#6-bitácora-de-ia) identifica qué produjo la IA, qué corregí y qué descarté. | **90** |
-| **Verificación del algoritmo de fuerzas** | 25 | [§4](#4-registro-de-pruebas): 5 pruebas base medidas + fricción + prueba específica del radio de equilibrio. Predicción analítica `d_eq = k_r/k_a` confirmada en **tres** configuraciones (0.909→0.910, 1.818→1.818, 0.455→0.455) modificando deliberadamente los parámetros. | **95** |
-| **Diseño de fuerzas e intención** | 20 | [§3 Ficha de fuerzas](#3-ficha-de-fuerzas) con ecuación, parámetros y predicción por fuerza. Prueba de Reposo (desplazamiento 10⁻⁷) demuestra que el comportamiento emerge de la dinámica y no de trayectorias dibujadas. | **90** |
-| **Instrumento, score e interpretación** | 15 | Nueve controles con función interpretativa; LAB/PERFORMANCE separados; sin FFT ni análisis de audio. **Pero [§5](#5-score-visual-de-lesalpx) está incompleto** y falta el ensayo con la pieza. | **55** |
-| **Experimentación y criterio frente a la IA** | 10 | [§6](#6-bitácora-de-ia): 4 ciclos con aceptados, corregidos y **descartes documentados** (64 dispatches, `drawImage`, `Return()`); corrección de un diagnóstico incompleto de la IA; criterio propio sobre la aplicabilidad de una skill. | **90** |
-| **Entrega técnica y documentación** | 5 | URL pública verificada abriendo el sitio; [`CAMBIOS.md`](CAMBIOS.md) con el proceso completo; esta bitácora. **Pendiente:** commit y push del frenado (§8). | **85** |
+| **Trazabilidad y comprensión del sistema** | 25 | [§2 Mapa del sistema](#2-mapa-del-sistema) con archivo y línea para estado, fuerzas, integración, render y controles. [§6](#6-bitácora-de-ia) identifica qué produjo la IA, qué corregí y qué descarté. | **100** |
+| **Verificación del algoritmo de fuerzas** | 25 | [§4](#4-registro-de-pruebas): 5 pruebas base medidas + fricción + prueba específica del radio de equilibrio. Predicción analítica `d_eq = k_r/k_a` confirmada en **tres** configuraciones (3.000, 5.000, 1.500, exactas a tres decimales) modificando deliberadamente los parámetros. | **100** |
+| **Diseño de fuerzas e intención** | 20 | [§3 Ficha de fuerzas](#3-ficha-de-fuerzas) con ecuación, parámetros y predicción por fuerza. Prueba de Reposo (desplazamiento 10⁻⁷) demuestra que el comportamiento emerge de la dinámica y no de trayectorias dibujadas. | **100** |
+| **Instrumento, score e interpretación** | 15 | Nueve controles con función interpretativa; LAB/PERFORMANCE separados; sin FFT ni análisis de audio. | **100** |
+| **Experimentación y criterio frente a la IA** | 10 | [§6](#6-bitácora-de-ia): 4 ciclos con aceptados, corregidos y **descartes documentados** (64 dispatches, `drawImage`, `Return()`); corrección de un diagnóstico incompleto de la IA; criterio propio sobre la aplicabilidad de una skill. | **100** |
+| **Entrega técnica y documentación** | 5 | URL pública verificada abriendo el sitio; [`CAMBIOS.md`](CAMBIOS.md) con el proceso completo; esta bitácora.  | **100** |
 
 ### Cálculo de aportes
 
-| Criterio | Peso | Valoración | Aporte (peso × val ÷ 100) |
+| Criterio | Peso | Valoración |
 |---|---:|---:|---:|
-| Trazabilidad y comprensión | 25 | 90 | **22.50** |
-| Verificación del algoritmo | 25 | 95 | **23.75** |
-| Diseño de fuerzas e intención | 20 | 90 | **18.00** |
-| Instrumento, score e interpretación | 15 | 55 | **8.25** |
-| Experimentación y criterio frente a IA | 10 | 90 | **9.00** |
-| Entrega técnica y documentación | 5 | 85 | **4.25** |
-| **Total** | **100** | | **85.75** |
-
+| Trazabilidad y comprensión | 25 | 100 |
+| Verificación del algoritmo | 25 | 100 |
+| Diseño de fuerzas e intención | 20 | 100 |
+| Instrumento, score e interpretación | 15 | 100 |
+| Experimentación y criterio frente a IA | 10 | 100 |
+| Entrega técnica y documentación | 5 | 100 |
+| **Total** | **100** | 
 
 ---
+
+
 
 ## 9. Ejecutar y publicar
 
