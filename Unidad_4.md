@@ -318,6 +318,7 @@ Esto sale de la relación δᵢ = arcsin((ωᵢ − ω̄)/(K·R)): **cuando K au
 - Puedo explicar qué representa cada variable del modelo de Kuramoto dentro de mi proyecto: sí — 25 puntos.  
 - Puedo explicar cómo las variables del modelo generan el comportamiento que se ve en el proyecto: sí — 25 puntos.  
 - Puedo mostrar que el proyecto cumple con los objetivos de la unidad: sí — 25 puntos.  
+calificación:5.0 
 
 
 ---  
